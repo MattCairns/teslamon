@@ -3,13 +3,19 @@ import json
 import time
 import pickle
 import yaml
+import logging
+from car import *
 from pushover import Client
 
 def main():
     config = yaml.safe_load(open("config.yml"))
     # If you want to push to pushover put your tokens here
     client = Client(config['teslamon']['pushover']['user_key'], api_token=config['teslamon']['pushover']['api_token'])
-    client.send_message('Teslamon has started', title='Teslamon')
+    client.send_message('Teslamon has started.', title='Teslamon')
+
+    file = config['teslamon']['inventory_location'] + "inventory.pickle"
+    print('Teslamon has started.')
+    print(f'Storing inventory at {file}')
 
     params = {
       "query": {
@@ -39,56 +45,38 @@ def main():
       "outsideSearch": "false"
     }
 
+
     cmd = 'https://www.tesla.com/en_ca/inventory/api/v1/inventory-results?query=' + json.dumps(params)
 
+    known_cars = set([])
+    try:
+        known_cars = pickle.load(open(file, "rb"))
+    except (OSError, IOError) as e:
+        pickle.dump(known_cars, open(file, "wb"))
+
     while(True):
+        time.sleep(20)
         res = requests.get(cmd)
 
-        cars = json.loads(res.text)
-        if cars["total_matches_found"] == 0:
-            print("No matches found")
+        inventory = json.loads(res.text)
+        if inventory["total_matches_found"] == 0:
+            print('No matches found in inventory')
             continue
 
-        file = "/var/teslamon/inventory.pickle"
-        known_cars = set([])
-        try:
-            known_cars = pickle.load(open(file, "rb"))
-        except (OSError, IOError) as e:
-            pickle.dump(known_cars, open(file, "wb"))
+        for c in inventory["results"]:
+            car = Car(c)
 
+            title = car.trim + ", " + car.paint + ", " + car.interior + ", " + car.wheels 
 
-        for car in cars["results"]:
-            vin = car["VIN"]
-            try:
-                trim = car["TRIM"][0]
-            except:
-                trim = "null"
-            try:
-                paint = car["PAINT"][0]
-            except:
-                paint = "null"
-            try:
-                interior = car["INTERIOR"][0]
-            except:
-                interior = "null"
-            try:
-                wheels = car["WHEELS"][0]
-            except:
-                wheels = "null"
-            url = "https://www.tesla.com/en_CA/m3/order/" + vin
+            if car.vin not in known_cars:
+                client.send_message(car.url, title=title, priority=1)
+                print(f'Found new VIN: {car.vin}')
 
-            title = trim + ", " + paint + ", " + interior + ", " + wheels 
-            msg = url
-
-            if vin not in known_cars:
-                client.send_message(msg, title=title, priority=1)
-
-            known_cars.add(vin)
+            known_cars.add(car.vin)
 
         pickle.dump(known_cars, open(file, "wb"))
 
-        print(f"STATUS: {res.status_code}")
-        time.sleep(20)
+        print(f'STATUS: {res.status_code}')
 
 
 if __name__ == "__main__":
