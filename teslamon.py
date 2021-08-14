@@ -1,9 +1,4 @@
-import requests
-import json
-import time
-import pickle
-import yaml
-import logging
+import requests, json, time, pickle, yaml, logging, datetime
 from car import *
 from pushover import Client
 
@@ -76,7 +71,8 @@ def main():
 
         pickle.dump(known_cars, open(file, "wb"))
 
-        print(f'STATUS: {res.status_code}')
+        now = datetime.datetime.now()
+        print(f'{now}: STATUS = {res.status_code}')
 
 
 if __name__ == "__main__":
