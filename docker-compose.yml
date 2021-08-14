@@ -1,0 +1,6 @@
+version: "3.9"
+services:
+  teslamon:
+    build: .
+    volumes:
+      - /tmp/teslamon:/var/teslamon

@@ -1,0 +1,5 @@
+teslamon:
+  pushover:
+    user_key: PUSHOVER_USER_KEY
+    api_token: PUSHOVER_API_TOKEN
+
