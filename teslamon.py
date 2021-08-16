@@ -50,26 +50,25 @@ def main():
         pickle.dump(known_cars, open(file, "wb"))
 
     while(True):
-        time.sleep(20)
+        time.sleep(15)
         res = requests.get(cmd)
 
         inventory = json.loads(res.text)
         if inventory["total_matches_found"] == 0:
             print('No matches found in inventory')
-            continue
+        else:
+            for c in inventory["results"]:
+                car = Car(c)
 
-        for c in inventory["results"]:
-            car = Car(c)
+                title = car.trim + ", " + car.paint + ", " + car.interior + ", " + car.wheels 
 
-            title = car.trim + ", " + car.paint + ", " + car.interior + ", " + car.wheels 
+                if car.vin not in known_cars:
+                    client.send_message(car.url, title=title, priority=1)
+                    print(f'Found new VIN: {car.vin}')
 
-            if car.vin not in known_cars:
-                client.send_message(car.url, title=title, priority=1)
-                print(f'Found new VIN: {car.vin}')
+                known_cars.add(car.vin)
 
-            known_cars.add(car.vin)
-
-        pickle.dump(known_cars, open(file, "wb"))
+            pickle.dump(known_cars, open(file, "wb"))
 
         now = datetime.datetime.now()
         print(f'{now}: STATUS = {res.status_code}')
